@@ -3,6 +3,9 @@ import os
 from pyrogram import Client
 from flask import Flask
 import threading
+import time
+import urllib.request
+import re
 
 # Python 3.14 event loop fix
 try:
@@ -27,11 +30,23 @@ def run_web():
 
 threading.Thread(target=run_web, daemon=True).start()
 
-# 2. Telegram Userbot Configuration
+# 2. Self-Ping mechanism taaki Render sleep na ho
+def self_ping():
+    url = "https://telegram-bot-ps39.onrender.com"
+    while True:
+        try:
+            time.sleep(120)  # har 2 minute mein ping karega
+            urllib.request.urlopen(url)
+            print("[Self-Ping] Server pinged successfully!")
+        except Exception as e:
+            print(f"[Self-Ping Error]: {e}")
+
+threading.Thread(target=self_ping, daemon=True).start()
+
+# 3. Telegram Userbot Configuration
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
 
-# Render environment variable se session string uthayega
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
 if SESSION_STRING:
@@ -52,16 +67,13 @@ SOURCE_GROUP_IDS = [
 ]
 TARGET_GROUP_ID = -1001896213793
 
+# Sirf abhi yeh countries / keywords allow honge
 TARGET_KEYWORDS = [
     "united states",
     "france",
     "spain",
     "italy",
-    "germany",
-    "canada",
-    "5",
-    "5 series",
-    "series 5"
+    "germany"
 ]
 
 @app.on_message()
@@ -69,7 +81,14 @@ async def forward_filtered_messages(client, message):
     try:
         if message.chat and message.chat.id in SOURCE_GROUP_IDS:
             if message.text:
-                text_lower = message.text.lower()
+                text_clean = message.text.strip()
+                text_lower = text_clean.lower()
+                
+                # Rule 1: Agar message '4' ya '4 series' se shuru hota hai, toh seedha ignore karo
+                if text_lower.startswith("4") or "4 series" in text_lower or re.match(r'^4\b', text_lower):
+                    return
+                
+                # Rule 2: Sirf defined target keywords match hone par hi forward ho
                 if any(kw in text_lower for kw in TARGET_KEYWORDS):
                     await client.send_message(TARGET_GROUP_ID, message.text)
                     print("[🚀] Message forwarded successfully!")
