@@ -4,7 +4,6 @@ import threading
 import time
 import urllib.request
 from telethon import TelegramClient, events
-from telethon.sessions import StringSession
 
 # 1. Web Server for Render
 app_web = Flask(__name__)
@@ -34,12 +33,8 @@ threading.Thread(target=self_ping, daemon=True).start()
 # 3. Telethon Userbot Configuration
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
-SESSION_STRING = os.environ.get("SESSION_STRING")
 
-if SESSION_STRING:
-    client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
-else:
-    client = TelegramClient("my_userbot", API_ID, API_HASH)
+client = TelegramClient("my_userbot", API_ID, API_HASH)
 
 SOURCE_GROUP_IDS = [
     -1001650537937,
