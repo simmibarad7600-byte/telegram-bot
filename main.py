@@ -1,70 +1,28 @@
 import os
-import asyncio
-from flask import Flask
-import threading
-import time
-import urllib.request
-from pyrogram import Client
+from pyrogram import Client, filters
 
-# 1. Web Server for Render
-app_web = Flask(__name__)
+# Environment variables se credentials uthana (Railway variables se connect ho jayega)
+API_ID = int(os.getenv("API_ID", "0"))
+API_HASH = os.getenv("API_HASH", "")
+SESSION_STRING = os.getenv("SESSION_STRING", "")
 
-@app_web.route('/')
-def home():
-    return "Bot is active!"
+# Agar aapne source groups aur target group IDs env me rakhe hain ya yahan direct define karne hain
+# Yahan apne Source Group IDs aur Target Group ID daal dein
+SOURCE_GROUP_IDS = [-1001234567890]  # Yahan apne source groups ki IDs dalein (integer format me)
+TARGET_GROUP_ID = -1009876543210    # Yahan apne target group ki ID dalein
 
-def run_web():
-    port = int(os.environ.get("PORT", 10000))
-    app_web.run(host="0.0.0.0", port=port)
+# Jin keywords ke aane par message forward karna hai
+TARGET_KEYWORDS = ["keyword1", "keyword2"]  # Apne keywords yahan daal dein
 
-threading.Thread(target=run_web, daemon=True).start()
-
-# 2. Self-Ping mechanism
-def self_ping():
-    url = "https://telegram-bot-ps39.onrender.com"
-    while True:
-        try:
-            time.sleep(120)
-            urllib.request.urlopen(url)
-        except Exception:
-            pass
-
-threading.Thread(target=self_ping, daemon=True).start()
-
-# 3. Pyrogram Configuration
-API_ID = 8391628
-API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
-SESSION_STRING = os.environ.get("SESSION_STRING")
-
-if SESSION_STRING:
-    app = Client(
-        "my_userbot",
-        api_id=API_ID,
-        api_hash=API_HASH,
-        session_string=SESSION_STRING
-    )
-else:
-    app = Client("my_userbot", api_id=API_ID, api_hash=API_HASH)
-
-SOURCE_GROUP_IDS = [
-    -1001650537937,
-    -1003933792726,
-    -1004438106656,
-    -1001491105566
-]
-TARGET_GROUP_ID = -1001896213793
-
-TARGET_KEYWORDS = [
-    "united states",
-    "france",
-    "spain",
-    "italy",
-    "germany"
-]
+app = Client(
+    "my_userbot",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    session_string=SESSION_STRING
+)
 
 @app.on_message()
 async def forward_filtered_messages(client, message):
-    # Yeh try-except block saari peer errors ko chupchaap ignore kar dega
     try:
         chat_id = message.chat.id if message.chat else None
         if chat_id in SOURCE_GROUP_IDS:
@@ -72,18 +30,19 @@ async def forward_filtered_messages(client, message):
                 text_clean = message.text.strip()
                 text_lower = text_clean.lower()
                 
-                if text_lower.startswith("4") or "4 series" in text_lower:
+                # '3' ya '4' se shuru hone wale messages ya lines ko yahin rok diya jayega
+                if text_lower.startswith(("3", "4")) or any(line.strip().startswith(("3", "4")) for line in text_clean.split("\n")):
                     return
                 
+                # Agar keywords match karte hain toh message forward hoga
                 if any(kw in text_lower for kw in TARGET_KEYWORDS):
                     await client.send_message(TARGET_GROUP_ID, message.text)
-                    print("[🚀] Message forwarded successfully!")
-    except Exception:
+                    print("[🚀] Message successfully forward ho gaya!")
+    except Exception as e:
         pass
 
-print("==================================================")
-print("       🚀 LIVE FORWARDER USERBOT READY 🚀       ")
-print("==================================================")
-
 if __name__ == "__main__":
+    print("========================================")
+    print("   🚀 LIVE FORWARDER USERBOT READY 🚀   ")
+    print("========================================")
     app.run()
