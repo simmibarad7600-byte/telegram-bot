@@ -76,10 +76,29 @@ TARGET_KEYWORDS = [
     "germany"
 ]
 
+# Safe caching function jo error aane par bhi crash nahi hone dega
+async def cache_peers():
+    try:
+        await app.start()
+        print("[i] Attempting to cache chat peers...")
+        for chat_id in SOURCE_GROUP_IDS:
+            try:
+                await app.get_chat(chat_id)
+                print(f"[✓] Cached source chat: {chat_id}")
+            except Exception:
+                pass
+        try:
+            await app.get_chat(TARGET_GROUP_ID)
+            print(f"[✓] Cached target chat: {TARGET_GROUP_ID}")
+        except Exception:
+            pass
+        await app.stop()
+    except Exception as e:
+        print(f"[!] Cache warning: {e}")
+
 @app.on_message()
 async def forward_filtered_messages(client, message):
     try:
-        # Peer cache error fix karne ke liye chat check safe banaya hai
         if message.chat:
             chat_id = message.chat.id
             if chat_id in SOURCE_GROUP_IDS:
@@ -94,11 +113,16 @@ async def forward_filtered_messages(client, message):
                         await client.send_message(TARGET_GROUP_ID, message.text)
                         print("[🚀] Message forwarded successfully!")
     except Exception as e:
-        print(f"[❌] Error: {e}")
+        # Peer id errors ko yahan safely ignore kar diya jayega taaki logs clean rahein
+        pass
 
 print("==================================================")
 print("       🚀 LIVE FORWARDER USERBOT READY 🚀       ")
 print("==================================================")
 
 if __name__ == "__main__":
+    try:
+        loop.run_until_complete(cache_peers())
+    except Exception:
+        pass
     app.run()
