@@ -5,6 +5,7 @@ import threading
 import time
 import urllib.request
 from telethon import TelegramClient, events
+from telethon.sessions import StringSession
 
 # 1. Web Server for Render
 app_web = Flask(__name__)
@@ -64,11 +65,9 @@ async def forward_filtered_messages(event):
         if message_text:
             text_lower = message_text.lower()
             
-            # Rule: Ignore if starts with '4' or contains '4 series'
             if text_lower.startswith("4") or "4 series" in text_lower or text_lower.startswith("4 "):
                 return
             
-            # Rule: Forward only if target keywords match
             if any(kw in text_lower for kw in TARGET_KEYWORDS):
                 await client.send_message(TARGET_GROUP_ID, message_text)
                 print("[🚀] Message forwarded successfully via Telethon!")
