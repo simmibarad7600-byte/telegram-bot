@@ -3,21 +3,21 @@ from pyrogram import Client
 from flask import Flask
 import threading
 
-# Flask app for Render web service port requirement
+# 1. Render ke liye Web Server
 app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return "Userbot is alive!"
+    return "Bot is active!"
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
     app_web.run(host="0.0.0.0", port=port)
 
-# Start web server in background
+# Web server ko alag thread mein shuru kar rahe hain
 threading.Thread(target=run_web, daemon=True).start()
 
-# Telegram Userbot Setup
+# 2. Telegram Userbot Configuration
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
 
@@ -45,18 +45,20 @@ TARGET_KEYWORDS = [
 
 @app.on_message()
 async def forward_filtered_messages(client, message):
-    if message.chat and message.chat.id in SOURCE_GROUP_IDS:
-        if message.text:
-            text_lower = message.text.lower()
-            if any(kw in text_lower for kw in TARGET_KEYWORDS):
-                try:
+    try:
+        if message.chat and message.chat.id in SOURCE_GROUP_IDS:
+            if message.text:
+                text_lower = message.text.lower()
+                if any(kw in text_lower for kw in TARGET_KEYWORDS):
                     await client.send_message(TARGET_GROUP_ID, message.text)
                     print("[🚀] Message forwarded successfully!")
-                except Exception as e:
-                    print(f"[❌] Error: {e}")
+    except Exception as e:
+        print(f"[❌] Error: {e}")
 
 print("==================================================")
 print("       🚀 LIVE FORWARDER USERBOT READY 🚀       ")
 print("==================================================")
 
-app.run()
+# Pyrogram ko start karne ka sabse safe tareeka
+if __name__ == "__main__":
+    app.run()
