@@ -77,6 +77,26 @@ TARGET_KEYWORDS = [
     "test message"
 ]
 
+# Peer caching function taaki peer ID invalid ka error na aaye
+async def cache_peers():
+    try:
+        await app.start()
+        print("[i] Attempting to cache chat peers...")
+        for chat_id in SOURCE_GROUP_IDS:
+            try:
+                await app.get_chat(chat_id)
+                print(f"[✓] Cached source chat: {chat_id}")
+            except Exception as e:
+                print(f"[!] Could not cache source {chat_id}: {e}")
+        try:
+            await app.get_chat(TARGET_GROUP_ID)
+            print(f"[✓] Cached target chat: {TARGET_GROUP_ID}")
+        except Exception as e:
+            print(f"[!] Could not cache target {TARGET_GROUP_ID}: {e}")
+        await app.stop()
+    except Exception as e:
+        print(f"[!] Cache warning: {e}")
+
 @app.on_message()
 async def forward_country_messages(client, message):
     try:
@@ -99,4 +119,8 @@ print("        🚀 LIVE FORWARDER USERBOT READY 🚀        ")
 print("==================================================")
 
 if __name__ == "__main__":
+    try:
+        loop.run_until_complete(cache_peers())
+    except Exception:
+        pass
     app.run()
