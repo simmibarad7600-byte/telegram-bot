@@ -31,7 +31,7 @@ threading.Thread(target=run_web, daemon=True).start()
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
 
-# Render ke environment variable se session string uthayega
+# Render environment variable se session string uthayega
 SESSION_STRING = os.environ.get("SESSION_STRING")
 
 if SESSION_STRING:
@@ -42,7 +42,6 @@ if SESSION_STRING:
         session_string=SESSION_STRING
     )
 else:
-    # Agar session string nahi mili toh local name se chalega
     app = Client("my_userbot", api_id=API_ID, api_hash=API_HASH)
 
 SOURCE_GROUP_IDS = [
@@ -60,7 +59,9 @@ TARGET_KEYWORDS = [
     "italy",
     "germany",
     "canada",
-    
+    "5",
+    "5 series",
+    "series 5"
 ]
 
 @app.on_message()
