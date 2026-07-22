@@ -1,16 +1,17 @@
 import os
+import asyncio
 from flask import Flask
 import threading
 import time
 import urllib.request
-from telethon import TelegramClient, events
+from pyrogram import Client
 
 # 1. Web Server for Render
 app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return "Telethon Bot is active!"
+    return "Bot is active!"
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
@@ -30,11 +31,20 @@ def self_ping():
 
 threading.Thread(target=self_ping, daemon=True).start()
 
-# 3. Telethon Userbot Configuration
+# 3. Pyrogram Configuration
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
+SESSION_STRING = os.environ.get("SESSION_STRING")
 
-client = TelegramClient("my_userbot", API_ID, API_HASH)
+if SESSION_STRING:
+    app = Client(
+        "my_userbot",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        session_string=SESSION_STRING
+    )
+else:
+    app = Client("my_userbot", api_id=API_ID, api_hash=API_HASH)
 
 SOURCE_GROUP_IDS = [
     -1001650537937,
@@ -52,26 +62,28 @@ TARGET_KEYWORDS = [
     "germany"
 ]
 
-@client.on(events.NewMessage(chats=SOURCE_GROUP_IDS))
-async def forward_filtered_messages(event):
+@app.on_message()
+async def forward_filtered_messages(client, message):
+    # Yeh try-except block saari peer errors ko chupchaap ignore kar dega
     try:
-        message_text = event.raw_text
-        if message_text:
-            text_lower = message_text.lower()
-            
-            if text_lower.startswith("4") or "4 series" in text_lower or text_lower.startswith("4 "):
-                return
-            
-            if any(kw in text_lower for kw in TARGET_KEYWORDS):
-                await client.send_message(TARGET_GROUP_ID, message_text)
-                print("[🚀] Message forwarded successfully via Telethon!")
-    except Exception as e:
-        print(f"[❌ Error]: {e}")
+        chat_id = message.chat.id if message.chat else None
+        if chat_id in SOURCE_GROUP_IDS:
+            if message.text:
+                text_clean = message.text.strip()
+                text_lower = text_clean.lower()
+                
+                if text_lower.startswith("4") or "4 series" in text_lower:
+                    return
+                
+                if any(kw in text_lower for kw in TARGET_KEYWORDS):
+                    await client.send_message(TARGET_GROUP_ID, message.text)
+                    print("[🚀] Message forwarded successfully!")
+    except Exception:
+        pass
 
 print("==================================================")
-print("     🚀 TELETHON LIVE FORWARDER BOT READY 🚀     ")
+print("       🚀 LIVE FORWARDER USERBOT READY 🚀       ")
 print("==================================================")
 
 if __name__ == "__main__":
-    client.start()
-    client.run_until_disconnected()
+    app.run()
