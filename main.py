@@ -61,7 +61,7 @@ else:
 
 SOURCE_GROUP_IDS = [
     -1001650537937,
-    -1003933792726,
+    -1003933792726, # Yeh group list mein rahega
     -1004438106656,
     -1001491105566,
     -1003601805762
@@ -77,7 +77,7 @@ TARGET_KEYWORDS = [
     "test message"
 ]
 
-# Peer caching function taaki peer ID invalid ka error na aaye
+# Safely cache peers without crashing if any group fails or restricts access
 async def cache_peers():
     try:
         await app.start()
@@ -87,7 +87,7 @@ async def cache_peers():
                 await app.get_chat(chat_id)
                 print(f"[✓] Cached source chat: {chat_id}")
             except Exception as e:
-                print(f"[!] Could not cache source {chat_id}: {e}")
+                print(f"[!] Skipped/Ignored chat {chat_id} due to restriction: {e}")
         try:
             await app.get_chat(TARGET_GROUP_ID)
             print(f"[✓] Cached target chat: {TARGET_GROUP_ID}")
@@ -111,7 +111,6 @@ async def forward_country_messages(client, message):
                         await client.send_message(TARGET_GROUP_ID, message.text)
                         print("[🚀] Filter matched & message forwarded successfully!")
     except Exception as e:
-        print(f"[Forward Error]: {e}")
         pass
 
 print("==================================================")
