@@ -1,7 +1,7 @@
 import sys
 import asyncio
 
-# Python 3.14 event loop crash fix
+# Python 3.14 event loop fix
 try:
     loop = asyncio.get_event_loop()
     if loop.is_closed():
@@ -11,7 +11,7 @@ except RuntimeError:
     asyncio.set_event_loop(loop)
 
 import os
-from pyrogram import Client, filters
+from pyrogram import Client
 from flask import Flask
 import threading
 import time
@@ -75,20 +75,22 @@ TARGET_KEYWORDS = [
     "germany"
 ]
 
-# Sirf specified source chats ke messages listen karega, baaki ignore honge
-@app.on_message(filters.chat(SOURCE_GROUP_IDS))
+@app.on_message()
 async def forward_filtered_messages(client, message):
     try:
-        if message.text:
-            text_clean = message.text.strip()
-            text_lower = text_clean.lower()
-            
-            if text_lower.startswith("4") or "4 series" in text_lower or re.match(r'^4\b', text_lower):
-                return
-            
-            if any(kw in text_lower for kw in TARGET_KEYWORDS):
-                await client.send_message(TARGET_GROUP_ID, message.text)
-                print("[🚀] Message forwarded successfully!")
+        # Chat object ke bina direct ID check karenge taaki resolve_peer error na aaye
+        chat_id = message.chat.id if message.chat else None
+        if chat_id in SOURCE_GROUP_IDS:
+            if message.text:
+                text_clean = message.text.strip()
+                text_lower = text_clean.lower()
+                
+                if text_lower.startswith("4") or "4 series" in text_lower or re.match(r'^4\b', text_lower):
+                    return
+                
+                if any(kw in text_lower for kw in TARGET_KEYWORDS):
+                    await client.send_message(TARGET_GROUP_ID, message.text)
+                    print("[🚀] Message forwarded successfully!")
     except Exception:
         pass
 
