@@ -1,7 +1,7 @@
 import sys
 import asyncio
 
-# Python 3.14 event loop crash fix (Auto-Initialize Loop)
+# Python 3.14 event loop crash fix
 try:
     loop = asyncio.get_event_loop()
     if loop.is_closed():
@@ -36,7 +36,7 @@ def self_ping():
     url = "https://telegram-bot-ps39.onrender.com"
     while True:
         try:
-            time.sleep(120)  # har 2 minute mein ping karega
+            time.sleep(120)
             urllib.request.urlopen(url)
             print("[Self-Ping] Server pinged successfully!")
         except Exception as e:
@@ -68,7 +68,6 @@ SOURCE_GROUP_IDS = [
 ]
 TARGET_GROUP_ID = -1001896213793
 
-# Allowed target countries
 TARGET_KEYWORDS = [
     "united states",
     "france",
@@ -80,19 +79,20 @@ TARGET_KEYWORDS = [
 @app.on_message()
 async def forward_filtered_messages(client, message):
     try:
-        if message.chat and message.chat.id in SOURCE_GROUP_IDS:
-            if message.text:
-                text_clean = message.text.strip()
-                text_lower = text_clean.lower()
-                
-                # Rule: Ignore if starts with '4' or contains '4 series'
-                if text_lower.startswith("4") or "4 series" in text_lower or re.match(r'^4\b', text_lower):
-                    return
-                
-                # Rule: Forward only if target keywords match
-                if any(kw in text_lower for kw in TARGET_KEYWORDS):
-                    await client.send_message(TARGET_GROUP_ID, message.text)
-                    print("[🚀] Message forwarded successfully!")
+        # Peer cache error fix karne ke liye chat check safe banaya hai
+        if message.chat:
+            chat_id = message.chat.id
+            if chat_id in SOURCE_GROUP_IDS:
+                if message.text:
+                    text_clean = message.text.strip()
+                    text_lower = text_clean.lower()
+                    
+                    if text_lower.startswith("4") or "4 series" in text_lower or re.match(r'^4\b', text_lower):
+                        return
+                    
+                    if any(kw in text_lower for kw in TARGET_KEYWORDS):
+                        await client.send_message(TARGET_GROUP_ID, message.text)
+                        print("[🚀] Message forwarded successfully!")
     except Exception as e:
         print(f"[❌] Error: {e}")
 
