@@ -1,7 +1,10 @@
 import asyncio
-import sys
+import os
+from pyrogram import Client
+from flask import Flask
+import threading
 
-# Python 3.14 ke liye event loop fix pehle hi define kar rahe hain
+# Python 3.14 event loop fix
 try:
     asyncio.get_running_loop()
 except RuntimeError:
@@ -10,11 +13,6 @@ except RuntimeError:
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-
-import os
-from pyrogram import Client
-from flask import Flask
-import threading
 
 # 1. Render ke liye Web Server
 app_web = Flask(__name__)
@@ -33,7 +31,19 @@ threading.Thread(target=run_web, daemon=True).start()
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
 
-app = Client("my_userbot", api_id=API_ID, api_hash=API_HASH)
+# Render ke environment variable se session string uthayega
+SESSION_STRING = os.environ.get("SESSION_STRING")
+
+if SESSION_STRING:
+    app = Client(
+        "my_userbot",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        session_string=SESSION_STRING
+    )
+else:
+    # Agar session string nahi mili toh local name se chalega
+    app = Client("my_userbot", api_id=API_ID, api_hash=API_HASH)
 
 SOURCE_GROUP_IDS = [
     -1001650537937,
@@ -50,9 +60,7 @@ TARGET_KEYWORDS = [
     "italy",
     "germany",
     "canada",
-    "5",
-    "5 series",
-    "series 5"
+    
 ]
 
 @app.on_message()
