@@ -1,20 +1,23 @@
+import os
 from pyrogram import Client
 from flask import Flask
 import threading
 
-# 1. Render ke liye Web Server
+# Flask app for Render web service port requirement
 app_web = Flask(__name__)
 
 @app_web.route('/')
 def home():
-    return "Bot is running 24/7!"
+    return "Userbot is alive!"
 
 def run_web():
-    app_web.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app_web.run(host="0.0.0.0", port=port)
 
-threading.Thread(target=run_web).daemon = True
+# Start web server in background
+threading.Thread(target=run_web, daemon=True).start()
 
-# 2. Telegram Client
+# Telegram Userbot Setup
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
 
