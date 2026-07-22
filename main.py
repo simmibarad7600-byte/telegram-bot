@@ -1,4 +1,15 @@
+import sys
 import asyncio
+
+# Python 3.14 event loop crash fix (Auto-Initialize Loop)
+try:
+    loop = asyncio.get_event_loop()
+    if loop.is_closed():
+        raise RuntimeError
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
 import os
 from pyrogram import Client
 from flask import Flask
@@ -6,16 +17,6 @@ import threading
 import time
 import urllib.request
 import re
-
-# Python 3.14 event loop fix
-try:
-    asyncio.get_running_loop()
-except RuntimeError:
-    try:
-        loop = asyncio.get_event_loop_policy().get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
 
 # 1. Render ke liye Web Server
 app_web = Flask(__name__)
@@ -67,7 +68,7 @@ SOURCE_GROUP_IDS = [
 ]
 TARGET_GROUP_ID = -1001896213793
 
-# Sirf abhi yeh countries / keywords allow honge
+# Allowed target countries
 TARGET_KEYWORDS = [
     "united states",
     "france",
@@ -84,11 +85,11 @@ async def forward_filtered_messages(client, message):
                 text_clean = message.text.strip()
                 text_lower = text_clean.lower()
                 
-                # Rule 1: Agar message '4' ya '4 series' se shuru hota hai, toh seedha ignore karo
+                # Rule: Ignore if starts with '4' or contains '4 series'
                 if text_lower.startswith("4") or "4 series" in text_lower or re.match(r'^4\b', text_lower):
                     return
                 
-                # Rule 2: Sirf defined target keywords match hone par hi forward ho
+                # Rule: Forward only if target keywords match
                 if any(kw in text_lower for kw in TARGET_KEYWORDS):
                     await client.send_message(TARGET_GROUP_ID, message.text)
                     print("[🚀] Message forwarded successfully!")
