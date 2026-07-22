@@ -1,5 +1,4 @@
 import os
-import asyncio
 from flask import Flask
 import threading
 import time
