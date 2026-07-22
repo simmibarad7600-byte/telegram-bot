@@ -1,31 +1,15 @@
-from pyrogram import Client, filters, idle
+from pyrogram import Client, filters
 from collections import deque
-from flask import Flask
-import threading
 import asyncio
 
-# 1. Render ke liye chhota sa Dummy Web Server
-app_web = Flask(__name__)
-
-@app_web.route('/')
-def home():
-    return "Bot is running 24/7 successfully!"
-
-def run_web():
-    app_web.run(host="0.0.0.0", port=10000)
-
-# Server ko background thread mein chalu kar rahe hain
-threading.Thread(target=run_web).daemon = True
-
-
-# 2. Aapki API Details
+# 1. Aapki API Details
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
 
 # Pyrogram Client
 app = Client("my_userbot", api_id=API_ID, api_hash=API_HASH)
 
-# 3. Group IDs (Jahan se messages aayenge)
+# 2. Group IDs (Jahan se messages aayenge)
 SOURCE_GROUP_IDS = [
     -1001650537937,
     -1003933792726,
@@ -36,7 +20,7 @@ SOURCE_GROUP_IDS = [
 # Aapka Target Group
 TARGET_GROUP_ID = -1001896213793
 
-# 4. Filter Keywords (Ukraine, UK, Australia, Brazil hata diye gaye hain)
+# 3. Filter Keywords
 TARGET_KEYWORDS = [
     "united states",
     "france",
@@ -75,8 +59,5 @@ print("==================================================")
 print("       🚀 LIVE FORWARDER USERBOT READY 🚀       ")
 print("==================================================")
 
-async def main():
-    await app.start()
-    await idle()
-
-asyncio.run(main())
+# Seedha app.run() chala rahe hain bina kisi extra thread ke
+app.run()
