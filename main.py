@@ -63,11 +63,11 @@ SOURCE_GROUP_IDS = [
     -1001650537937,
     -1003933792726,
     -1004438106656,
-    -1001491105566
+    -1001491105566,
+    -1003601805762
 ]
 TARGET_GROUP_ID = -1001896213793
 
-# Countries ke sath "test message" bhi add kar diya hai check karne ke liye
 TARGET_KEYWORDS = [
     "united states",
     "france",
@@ -76,25 +76,6 @@ TARGET_KEYWORDS = [
     "germany",
     "test message"
 ]
-
-async def cache_peers():
-    try:
-        await app.start()
-        print("[i] Attempting to cache chat peers...")
-        for chat_id in SOURCE_GROUP_IDS:
-            try:
-                await app.get_chat(chat_id)
-                print(f"[✓] Cached source chat: {chat_id}")
-            except Exception:
-                pass
-        try:
-            await app.get_chat(TARGET_GROUP_ID)
-            print(f"[✓] Cached target chat: {TARGET_GROUP_ID}")
-        except Exception:
-            pass
-        await app.stop()
-    except Exception as e:
-        print(f"[!] Cache warning: {e}")
 
 @app.on_message()
 async def forward_country_messages(client, message):
@@ -110,6 +91,7 @@ async def forward_country_messages(client, message):
                         await client.send_message(TARGET_GROUP_ID, message.text)
                         print("[🚀] Filter matched & message forwarded successfully!")
     except Exception as e:
+        print(f"[Forward Error]: {e}")
         pass
 
 print("==================================================")
@@ -117,8 +99,4 @@ print("        🚀 LIVE FORWARDER USERBOT READY 🚀        ")
 print("==================================================")
 
 if __name__ == "__main__":
-    try:
-        loop.run_until_complete(cache_peers())
-    except Exception:
-        pass
     app.run()
