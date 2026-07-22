@@ -1,4 +1,4 @@
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from collections import deque
 from flask import Flask
 import threading
@@ -36,18 +36,14 @@ SOURCE_GROUP_IDS = [
 # Aapka Target Group
 TARGET_GROUP_ID = -1001896213793
 
-# 4. Naye Filter Keywords
+# 4. Filter Keywords (Ukraine, UK, Australia, Brazil hata diye gaye hain)
 TARGET_KEYWORDS = [
     "united states",
     "france",
     "spain",
     "italy",
     "germany",
-    "ukraine",
-    "united kingdom",
     "canada",
-    "brazil",
-    "australia",
     "5",
     "5 series",
     "series 5"
@@ -79,10 +75,8 @@ print("==================================================")
 print("       🚀 LIVE FORWARDER USERBOT READY 🚀       ")
 print("==================================================")
 
-# Render ke liye Event Loop ka yeh fix zaroori hai
-loop = asyncio.get_event_loop()
-loop.run_until_complete(app.start())
+async def main():
+    await app.start()
+    await idle()
 
-import time
-while True:
-    time.sleep(1)
+asyncio.run(main())
