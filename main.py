@@ -11,14 +11,14 @@ except RuntimeError:
     asyncio.set_event_loop(loop)
 
 import os
-from pyrogram import Client
+from pyrogram import Client, filters
 from flask import Flask
 import threading
 import time
 import urllib.request
 import re
 
-# 1. Render ke liye Web Server
+# 1. Web Server for Render
 app_web = Flask(__name__)
 
 @app_web.route('/')
@@ -31,16 +31,15 @@ def run_web():
 
 threading.Thread(target=run_web, daemon=True).start()
 
-# 2. Self-Ping mechanism taaki Render sleep na ho
+# 2. Self-Ping mechanism
 def self_ping():
     url = "https://telegram-bot-ps39.onrender.com"
     while True:
         try:
             time.sleep(120)
             urllib.request.urlopen(url)
-            print("[Self-Ping] Server pinged successfully!")
-        except Exception as e:
-            print(f"[Self-Ping Error]: {e}")
+        except Exception:
+            pass
 
 threading.Thread(target=self_ping, daemon=True).start()
 
@@ -76,44 +75,21 @@ TARGET_KEYWORDS = [
     "germany"
 ]
 
-# Safe caching function jo error aane par bhi crash nahi hone dega
-async def cache_peers():
-    try:
-        await app.start()
-        print("[i] Attempting to cache chat peers...")
-        for chat_id in SOURCE_GROUP_IDS:
-            try:
-                await app.get_chat(chat_id)
-                print(f"[✓] Cached source chat: {chat_id}")
-            except Exception:
-                pass
-        try:
-            await app.get_chat(TARGET_GROUP_ID)
-            print(f"[✓] Cached target chat: {TARGET_GROUP_ID}")
-        except Exception:
-            pass
-        await app.stop()
-    except Exception as e:
-        print(f"[!] Cache warning: {e}")
-
-@app.on_message()
+# Sirf specified source chats ke messages listen karega, baaki ignore honge
+@app.on_message(filters.chat(SOURCE_GROUP_IDS))
 async def forward_filtered_messages(client, message):
     try:
-        if message.chat:
-            chat_id = message.chat.id
-            if chat_id in SOURCE_GROUP_IDS:
-                if message.text:
-                    text_clean = message.text.strip()
-                    text_lower = text_clean.lower()
-                    
-                    if text_lower.startswith("4") or "4 series" in text_lower or re.match(r'^4\b', text_lower):
-                        return
-                    
-                    if any(kw in text_lower for kw in TARGET_KEYWORDS):
-                        await client.send_message(TARGET_GROUP_ID, message.text)
-                        print("[🚀] Message forwarded successfully!")
-    except Exception as e:
-        # Peer id errors ko yahan safely ignore kar diya jayega taaki logs clean rahein
+        if message.text:
+            text_clean = message.text.strip()
+            text_lower = text_clean.lower()
+            
+            if text_lower.startswith("4") or "4 series" in text_lower or re.match(r'^4\b', text_lower):
+                return
+            
+            if any(kw in text_lower for kw in TARGET_KEYWORDS):
+                await client.send_message(TARGET_GROUP_ID, message.text)
+                print("[🚀] Message forwarded successfully!")
+    except Exception:
         pass
 
 print("==================================================")
@@ -121,8 +97,4 @@ print("       🚀 LIVE FORWARDER USERBOT READY 🚀       ")
 print("==================================================")
 
 if __name__ == "__main__":
-    try:
-        loop.run_until_complete(cache_peers())
-    except Exception:
-        pass
     app.run()
