@@ -1,15 +1,31 @@
 from pyrogram import Client, filters
 from collections import deque
-import asyncio
+from flask import Flask
+import threading
 
-# 1. Aapki API Details
+# 1. Render ka Port requirement poora karne ke liye chhota sa Web Server
+app_web = Flask(__name__)
+
+@app_web.route('/')
+def home():
+    return "Telegram Userbot is running 24/7!"
+
+def run_web():
+    # Render port 10000 expect karta hai web service ke liye
+    app_web.run(host="0.0.0.0", port=10000)
+
+# Web server ko background thread mein daal diya taaki bot ko disturb na kare
+threading.Thread(target=run_web).daemon = True
+
+
+# 2. Aapki Telegram API Details
 API_ID = 8391628
 API_HASH = "85d7a5e61b4054a8f29755a6172e45bf"
 
 # Pyrogram Client
 app = Client("my_userbot", api_id=API_ID, api_hash=API_HASH)
 
-# 2. Group IDs (Jahan se messages aayenge)
+# 3. Source Group IDs (Jahan se messages aayenge)
 SOURCE_GROUP_IDS = [
     -1001650537937,
     -1003933792726,
@@ -17,10 +33,10 @@ SOURCE_GROUP_IDS = [
     -1001491105566
 ]
 
-# Aapka Target Group
+# Aapka Target Group ID
 TARGET_GROUP_ID = -1001896213793
 
-# 3. Filter Keywords
+# 4. Filter Keywords
 TARGET_KEYWORDS = [
     "united states",
     "france",
@@ -59,5 +75,5 @@ print("==================================================")
 print("       🚀 LIVE FORWARDER USERBOT READY 🚀       ")
 print("==================================================")
 
-# Seedha app.run() chala rahe hain bina kisi extra thread ke
+# Seedha app.run() chala rahe hain taaki background thread ke sath conflict na ho
 app.run()
