@@ -1,4 +1,5 @@
 import os
+import re
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
@@ -13,54 +14,56 @@ app = Client(
     session_string=SESSION_STRING
 )
 
-# Jis group mein messages forward karne hain (Target Chat)
 TARGET_CHAT = -1001896213793
-
-# Allowed Countries Filter
 ALLOWED_COUNTRIES = ["united states", "france", "spain", "italy"]
 
-# Repeated/Duplicate messages ko rokne ke liye memory cache
-forwarded_messages_cache = set()
+# Smart duplicate tracking ke liye set
+forwarded_signatures = set()
+
+def get_clean_signature(text: str) -> str:
+    # Sirf letters aur numbers rakhega, baaki spaces/symbols hata dega taaki match pakka ho sake
+    clean_text = re.sub(r'[^a-zA-Z0-9]', '', text.lower())
+    return clean_text
 
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
     text = message.text or message.caption or ""
     text_lower = text.lower()
     
-    # 1. Check karein ki message "approved" hai ya nahi
+    # 1. Approved check
     if "approved" not in text_lower:
         return
     
-    # 2. Check karein ki allowed countries mein se koi keyword hai ya nahi
+    # 2. Country check
     is_allowed = any(country in text_lower for country in ALLOWED_COUNTRIES)
     
     if is_allowed:
-        # Message ki unique identity banayein duplicate rokne ke liye
-        msg_identifier = text.strip()
-        if not msg_identifier:
-            msg_identifier = str(message.id)
+        # Clean signature banayein duplicate rokne ke liye
+        signature = get_clean_signature(text)
+        
+        if not signature:
+            signature = str(message.id)
 
-        # 3. Check karein ki kya yeh message pehle hi forward ho chuka hai
-        if msg_identifier in forwarded_messages_cache:
-            return  # Agar pehle se bhej diya hai, toh dobara nahi bheja jayega
+        # 3. Duplicate check
+        if signature in forwarded_signatures:
+            print(f"⏩ Repeat message pakda gaya aur skip kiya gaya!")
+            return
 
         try:
-            # Target chat mein message forward kar dein
             await message.forward(chat_id=TARGET_CHAT)
             
-            # Cache mein save kar lein
-            forwarded_messages_cache.add(msg_identifier)
+            # Signature save karein
+            forwarded_signatures.add(signature)
             
-            # Memory clean rakhne ke liye cache ka size limit karein
-            if len(forwarded_messages_cache) > 2000:
-                forwarded_messages_cache.pop()
+            if len(forwarded_signatures) > 3000:
+                forwarded_signatures.pop()
                 
-            print(f"✅ Unique Approved message forwarded from chat: {message.chat.id}")
+            print(f"✅ Unique Approved message successfully forwarded!")
         except Exception as e:
             print(f"Error forwarding message: {e}")
 
 if __name__ == "__main__":
     print("==========================================")
-    print("🚀 GLOBAL DEDUPLICATED FORWARDER READY 🚀")
+    print("🚀 SMART DEDUPLICATED FORWARDER READY 🚀")
     print("==========================================")
     app.run()
