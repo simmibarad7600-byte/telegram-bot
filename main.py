@@ -29,14 +29,18 @@ async def forward_messages(client: Client, message: Message):
     text = message.text or message.caption or ""
     text_lower = text.lower()
     
-    # Check karein ki message mein allowed countries mein se koi keyword hai ya nahi
+    # 1. Sabse pehle check karein ki message "approved" hai ya nahi (Fake data hatane ke liye)
+    if "approved" not in text_lower:
+        return  # Agar approved nahi hai, toh yahin rok do
+    
+    # 2. Check karein ki message mein allowed countries mein se koi keyword hai ya nahi
     is_allowed = any(country in text_lower for country in ALLOWED_COUNTRIES)
     
     if is_allowed:
         try:
             # Target chat mein message forward kar dein
             await message.forward(chat_id=TARGET_CHAT)
-            print(f"Message successfully forwarded from {message.chat.id}")
+            print(f"✅ Approved & Matched message successfully forwarded from {message.chat.id}")
         except Exception as e:
             print(f"Error forwarding message: {e}")
 
