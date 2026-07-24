@@ -18,15 +18,23 @@ app = Client(
 TARGET_CHAT = -1001896213793
 ALLOWED_COUNTRIES = ["united states", "france", "spain", "italy"]
 
-# Message text aur uska bhejne ka time store karne ke liye dictionary
-recent_messages = {}
-# Duplicate rokne ka time window (Jaise: 10 minutes tak same message dobara nahi aana chahiye)
-TIME_WINDOW = 600  # seconds (10 minutes)
+# Track karne ke liye dictionary
+sent_transactions = {}
+TIME_WINDOW = 900  # 15 minutes
 
-def get_core_text(text: str) -> str:
-    # Numbers, symbols aur extra spaces hata kar sirf main words rakhenge
-    clean = re.sub(r'[^a-zA-Z]', '', text.lower())
-    return clean
+def extract_unique_identifier(text: str) -> str:
+    # Message ke andar se card number, amount, ya specific unique numbers/words nikalne ki koshish karenge
+    # Isse agar wahi transaction doosre text ke sath aayegi toh bhi pakdi jayegi
+    text_lower = text.lower()
+    
+    # Agar text mein koi numbers (jaise card ke digits ya amounts) hain, unhe extract karo
+    numbers = "".join(re.findall(r'\d+', text_lower))
+    
+    # Agar numbers milte hain toh unka use karenge, warna core text ka
+    if len(numbers) > 4:
+        return numbers[-10:] # Last 10 digits unique tracking ke liye
+    
+    return re.sub(r'[^a-zA-Z0-9]', '', text_lower)
 
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
@@ -42,40 +50,33 @@ async def forward_messages(client: Client, message: Message):
     
     if is_allowed:
         current_time = time.time()
-        core_text = get_core_text(text)
+        identifier = extract_unique_identifier(text)
         
-        if not core_text:
+        if not identifier or len(identifier) < 4:
             return
 
-        # Purane entries saaf karein jo time window se bahar ho gaye hain
-        expired_keys = [k for k, timestamp in recent_messages.items() if current_time - timestamp > TIME_WINDOW]
+        # Purane entries saaf karein
+        expired_keys = [k for k, timestamp in sent_transactions.items() if current_time - timestamp > TIME_WINDOW]
         for k in expired_keys:
-            del recent_messages[k]
+            del sent_transactions[k]
 
-        # Check karein ki kya yeh core text pichle 10 minutes mein already bheja gaya hai
-        is_duplicate = False
-        for sent_text in recent_messages.keys():
-            # Agar text ka 80% hissa match hota hai toh duplicate maan lo
-            if core_text == sent_text or (len(core_text) > 20 and (core_text in sent_text or sent_text in core_text)):
-                is_duplicate = True
-                break
-
-        if is_duplicate:
-            print(f"⏩ Time-window duplicate message pakda gaya aur skip kiya gaya!")
+        # Check karein ki kya yeh transaction/message pehle aa chuka hai
+        if identifier in sent_transactions:
+            print(f"⏩ Ek hi transaction ka doosra message rok liya gaya!")
             return
 
         try:
             await message.forward(chat_id=TARGET_CHAT)
             
-            # Current message ko time ke sath store kar lein
-            recent_messages[core_text] = current_time
+            # Save karein
+            sent_transactions[identifier] = current_time
                 
-            print(f"✅ Fresh Approved message successfully forwarded!")
+            print(f"✅ Pehla approved message successfully forward kiya gaya!")
         except Exception as e:
             print(f"Error forwarding message: {e}")
 
 if __name__ == "__main__":
     print("==========================================")
-    print("🚀 TIME-BASED SMART DEDUPLICATION READY 🚀")
+    print("🚀 SMART TRANSACTION DEDUPLICATOR READY 🚀")
     print("==========================================")
     app.run()
