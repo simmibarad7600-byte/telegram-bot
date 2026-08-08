@@ -56,7 +56,7 @@ async def test_filters_command(client: Client, message: Message):
         report += "\n✨ **Result:** Approved mil gaya! Target chat par bhej raha hu..."
         await message.edit(report)
         try:
-            await client.send_message(TARGET_CHAT, f"[TEST MESSAGE] {test_text}")
+            await client.send_message(TARGET_CHAT, f"[TEST MESSAGE]\n{test_text}")
             print("✅ Test message successfully sent to target chat!")
         except Exception as e:
             print(f"❌ Test send error: {e}")
@@ -65,7 +65,7 @@ async def test_filters_command(client: Client, message: Message):
         await message.edit(report)
 
 
-# Main Incoming Message Listener (Universal Logger ke sath)
+# Main Incoming Message Listener (Text Sending Bypass ke sath)
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
     try:
@@ -77,9 +77,6 @@ async def forward_messages(client: Client, message: Message):
 
         text = message.text or message.caption or ""
         
-        # 🔍 Yeh line batayegi ki kisi bhi group/channel se message aa raha hai ya nahi
-        print(f"🔍 Incoming from [{chat_title}]: {text[:30]}...")
-
         if not text:
             return
 
@@ -88,7 +85,7 @@ async def forward_messages(client: Client, message: Message):
         if "approved" not in text_lower:
             return
 
-        print(f"📥 APPROVED MATCHED in [{chat_title}]! Text: {text[:40]}...")
+        print(f"📥 APPROVED MATCHED in [{chat_title}]! Text length: {len(text)}")
 
         current_time = time.time()
         identifier = extract_unique_identifier(text)
@@ -106,9 +103,10 @@ async def forward_messages(client: Client, message: Message):
             print(f"⏩ Duplicate transaction blocked: {identifier}")
             return
 
-        await message.copy(chat_id=TARGET_CHAT)
+        # .copy() ki jagah seedha text send karenge taaki restriction bypass ho jaye
+        await client.send_message(chat_id=TARGET_CHAT, text=text)
         sent_transactions[identifier] = current_time
-        print(f"✅ SUCCESS: Approved message copied & sent to target chat!")
+        print(f"✅ SUCCESS: Approved message text sent to target chat!")
 
     except Exception as e:
         print(f"❌ Error in forward_messages: {e}")
@@ -118,13 +116,13 @@ async def forward_messages(client: Client, message: Message):
 async def main():
     await app.start()
     print("==========================================")
-    print("🚀 ULTIMATE LIVE BOT STARTED 🚀")
+    print("🚀 BYPASS BOT STARTED SUCCESSFULLY 🚀")
     print("==========================================")
 
     print("🔄 Loading chats and channels into cache...")
     async for dialog in app.get_dialogs():
         pass
-    print("✅ All chats cached successfully! Ready to listen live messages.")
+    print("✅ All chats cached successfully!")
 
     await idle()
     await app.stop()
