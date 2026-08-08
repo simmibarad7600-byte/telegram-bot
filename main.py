@@ -40,11 +40,9 @@ TIME_WINDOW = 900  # 15 minutes
 def is_mastercard(text: str) -> bool:
     text_lower = text.lower()
 
-    # Mastercard words
     if any(word in text_lower for word in MASTERCARD_WORDS):
         return True
 
-    # Common Mastercard BIN starting range check
     numbers = re.findall(r'\b\d{6,16}\b', text)
 
     for number in numbers:
@@ -52,11 +50,9 @@ def is_mastercard(text: str) -> bool:
             prefix2 = int(number[:2])
             prefix4 = int(number[:4])
 
-            # Mastercard traditional: 51-55
             if 51 <= prefix2 <= 55:
                 return True
 
-            # Mastercard newer range: 2221-2720
             if 2221 <= prefix4 <= 2720:
                 return True
 
@@ -68,8 +64,6 @@ def is_mastercard(text: str) -> bool:
 
 def extract_unique_identifier(text: str) -> str:
     text_lower = text.lower()
-
-    # Numbers collect karo
     numbers = "".join(re.findall(r'\d+', text_lower))
 
     if len(numbers) > 4:
@@ -78,10 +72,19 @@ def extract_unique_identifier(text: str) -> str:
     return re.sub(r'[^a-zA-Z0-9]', '', text_lower)
 
 
+# 🔑 YE SABSE IMPORTANT FIX HAI: Bot start hote hi saari chats/channels ko cache kar lega
+@app.on_ready()
+async def on_ready(client: Client, *args):
+    print("🔄 Loading chats and channels into cache for auto-detection...")
+    async for dialog in client.get_dialogs():
+        pass
+    print("✅ All chats cached successfully! Ready to catch automatic messages.")
+
+
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
 
-    # Target channel ka forwarded message dobara process mat karo
+    # Target channel ka message dobara process mat karo
     if message.chat and message.chat.id == TARGET_CHAT:
         return
 
@@ -92,15 +95,15 @@ async def forward_messages(client: Client, message: Message):
 
     text_lower = text.lower()
 
-    # 1. Approved mandatory
+    # 1. Approved check
     if "approved" not in text_lower:
         return
 
-    # 2. Mastercard mandatory
+    # 2. Mastercard check
     if not is_mastercard(text):
         return
 
-    # 3. Allowed country mandatory
+    # 3. Country check
     is_allowed_country = any(
         country in text_lower
         for country in ALLOWED_COUNTRIES
@@ -125,7 +128,7 @@ async def forward_messages(client: Client, message: Message):
     for key in expired_keys:
         del sent_transactions[key]
 
-    # Same transaction already forwarded
+    # Same transaction already forwarded check
     if identifier in sent_transactions:
         print(f"⏩ Duplicate Mastercard transaction blocked: {identifier}")
         return
@@ -136,7 +139,7 @@ async def forward_messages(client: Client, message: Message):
         sent_transactions[identifier] = current_time
 
         print(
-            f"✅ APPROVED Mastercard forwarded | "
+            f"✅ AUTO-DETECTED & FORWARDED | "
             f"Source: {message.chat.title if message.chat else 'Unknown'}"
         )
 
@@ -146,6 +149,6 @@ async def forward_messages(client: Client, message: Message):
 
 if __name__ == "__main__":
     print("==========================================")
-    print("🚀 AUTO GROUP MASTERCARD FILTER READY 🚀")
+    print("🚀 FIXED AUTO-DETECT MASTERCARD BOT READY 🚀")
     print("==========================================")
     app.run()
