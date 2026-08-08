@@ -18,6 +18,16 @@ app = Client(
 
 TARGET_CHAT = -1001896213793
 
+# Yahan aap apni pasand ki countries add ya remove kar sakte hain
+ALLOWED_COUNTRIES = [
+    "united states",
+    "usa",
+    "us",
+    "france",
+    "spain",
+    "italy"
+]
+
 MASTERCARD_WORDS = [
     "mastercard",
     "master card",
@@ -32,11 +42,9 @@ TIME_WINDOW = 900  # 15 minutes
 def is_mastercard(text: str) -> bool:
     text_lower = text.lower()
 
-    # Agar text me Mastercard ya related words hain
     if any(word in text_lower for word in MASTERCARD_WORDS):
         return True
 
-    # Agar card numbers hain toh unki prefix range check karo (Mastercard ranges)
     numbers = re.findall(r'\b\d{6,16}\b', text)
     for number in numbers:
         try:
@@ -52,6 +60,18 @@ def is_mastercard(text: str) -> bool:
         except ValueError:
             pass
 
+    return False
+
+
+def is_country_allowed(text_lower: str) -> bool:
+    for country in ALLOWED_COUNTRIES:
+        if len(country) <= 3:
+            pattern = r'\b' + re.escape(country) + r'\b'
+            if re.search(pattern, text_lower):
+                return True
+        else:
+            if country in text_lower:
+                return True
     return False
 
 
@@ -72,12 +92,13 @@ def extract_unique_identifier(text: str) -> str:
 async def test_filters_command(client: Client, message: Message):
     test_text = message.text.replace(".test", "").strip()
     if not test_text:
-        await message.edit("❌ Kripya test text bhi dein.\nExample: `.test Approved Mastercard 515828|12|28|123`")
+        await message.edit("❌ Kripya test text bhi dein.\nExample: `.test Approved Mastercard US 515828|12|28|123`")
         return
     
     text_lower = test_text.lower()
     has_approved = "approved" in text_lower or "✅" in test_text
     has_mc = is_mastercard(test_text)
+    has_country = is_country_allowed(text_lower)
     
     report = (
         f"🧪 **TEST REPORT:**\n"
@@ -85,9 +106,10 @@ async def test_filters_command(client: Client, message: Message):
         f"📝 Text: `{test_text}`\n"
         f"• Approved Check: {'✅ PASS' if has_approved else '❌ FAIL'}\n"
         f"• Mastercard Check: {'✅ PASS' if has_mc else '❌ FAIL'}\n"
+        f"• Country Check: {'✅ PASS' if has_country else '❌ FAIL'}\n"
     )
     
-    if has_approved and has_mc:
+    if has_approved and has_mc and has_country:
         report += "\n✨ **Result:** Sabhi filters pass ho gaye! Target chat par bhej raha hu..."
         await message.edit(report)
         try:
@@ -96,11 +118,11 @@ async def test_filters_command(client: Client, message: Message):
         except Exception as e:
             print(f"❌ Test send error: {e}")
     else:
-        report += "\n❌ **Result:** Filters fail ho gaye! (Approved ya Mastercard missing hai)"
+        report += "\n❌ **Result:** Filters fail ho gaye! (Approved, Mastercard ya Country match nahi hui)"
         await message.edit(report)
 
 
-# Main Incoming Message Listener (Approved + Mastercard Filter)
+# Main Incoming Message Listener (Approved + Mastercard + Country Filter)
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
     try:
@@ -117,15 +139,19 @@ async def forward_messages(client: Client, message: Message):
 
         text_lower = text.lower()
 
-        # 1. Approved ya Green Tick check
+        # 1. Approved / Tick Check
         if "approved" not in text_lower and "✅" not in text:
             return
 
-        # 2. Only Mastercard check
+        # 2. Mastercard Check
         if not is_mastercard(text):
             return
 
-        print(f"📥 MASTERCARD APPROVED MATCHED in [{chat_title}]! Text length: {len(text)}")
+        # 3. Country Check
+        if not is_country_allowed(text_lower):
+            return
+
+        print(f"📥 ALL FILTERS MATCHED in [{chat_title}]! Text length: {len(text)}")
 
         current_time = time.time()
         identifier = extract_unique_identifier(text)
@@ -145,7 +171,7 @@ async def forward_messages(client: Client, message: Message):
 
         await client.send_message(chat_id=TARGET_CHAT, text=text)
         sent_transactions[identifier] = current_time
-        print(f"✅ SUCCESS: Mastercard approved message sent to target chat!")
+        print(f"✅ SUCCESS: Filtered message sent to target chat!")
 
     except Exception as e:
         print(f"❌ Error in forward_messages: {e}")
@@ -155,7 +181,7 @@ async def forward_messages(client: Client, message: Message):
 async def main():
     await app.start()
     print("==========================================")
-    print("🚀 MASTERCARD FILTER BOT STARTED 🚀")
+    print("🚀 STRICT COUNTRY & MC BOT STARTED 🚀")
     print("==========================================")
 
     print("🔄 Loading chats and channels into cache...")
