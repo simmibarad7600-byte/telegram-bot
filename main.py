@@ -1,7 +1,7 @@
 import os
 import re
 import time
-from pyrogram import Client, filters
+from pyrogram import Client
 from pyrogram.types import Message
 
 API_ID = int(os.getenv("API_ID", "8391628"))
@@ -15,16 +15,61 @@ app = Client(
     session_string=SESSION_STRING
 )
 
+# Jahan approved Mastercard messages bhejne hain
 TARGET_CHAT = -1001896213793
-ALLOWED_COUNTRIES = ["united states", "france", "spain", "italy"]
+
+ALLOWED_COUNTRIES = [
+    "united states",
+    "usa",
+    "france",
+    "spain",
+    "italy"
+]
+
+MASTERCARD_WORDS = [
+    "mastercard",
+    "master card",
+    "master",
+    "mc"
+]
 
 sent_transactions = {}
 TIME_WINDOW = 900  # 15 minutes
 
 
+def is_mastercard(text: str) -> bool:
+    text_lower = text.lower()
+
+    # Mastercard words
+    if any(word in text_lower for word in MASTERCARD_WORDS):
+        return True
+
+    # Common Mastercard BIN starting range check
+    numbers = re.findall(r'\b\d{6,16}\b', text)
+
+    for number in numbers:
+        try:
+            prefix2 = int(number[:2])
+            prefix4 = int(number[:4])
+
+            # Mastercard traditional: 51-55
+            if 51 <= prefix2 <= 55:
+                return True
+
+            # Mastercard newer range: 2221-2720
+            if 2221 <= prefix4 <= 2720:
+                return True
+
+        except ValueError:
+            pass
+
+    return False
+
+
 def extract_unique_identifier(text: str) -> str:
     text_lower = text.lower()
 
+    # Numbers collect karo
     numbers = "".join(re.findall(r'\d+', text_lower))
 
     if len(numbers) > 4:
@@ -35,53 +80,72 @@ def extract_unique_identifier(text: str) -> str:
 
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
+
+    # Target channel ka forwarded message dobara process mat karo
+    if message.chat and message.chat.id == TARGET_CHAT:
+        return
+
     text = message.text or message.caption or ""
+
+    if not text:
+        return
+
     text_lower = text.lower()
 
-    # Approved check
+    # 1. Approved mandatory
     if "approved" not in text_lower:
         return
 
-    # Country check
-    is_allowed = any(
+    # 2. Mastercard mandatory
+    if not is_mastercard(text):
+        return
+
+    # 3. Allowed country mandatory
+    is_allowed_country = any(
         country in text_lower
         for country in ALLOWED_COUNTRIES
     )
 
-    if is_allowed:
-        current_time = time.time()
-        identifier = extract_unique_identifier(text)
+    if not is_allowed_country:
+        return
 
-        if not identifier or len(identifier) < 4:
-            return
+    current_time = time.time()
+    identifier = extract_unique_identifier(text)
 
-        # Purane records delete
-        expired_keys = [
-            k for k, timestamp in sent_transactions.items()
-            if current_time - timestamp > TIME_WINDOW
-        ]
+    if not identifier or len(identifier) < 4:
+        return
 
-        for k in expired_keys:
-            del sent_transactions[k]
+    # Old duplicate records remove
+    expired_keys = [
+        key
+        for key, timestamp in sent_transactions.items()
+        if current_time - timestamp > TIME_WINDOW
+    ]
 
-        # Duplicate transaction rokna
-        if identifier in sent_transactions:
-            print("⏩ Ek hi transaction ka doosra message rok liya gaya!")
-            return
+    for key in expired_keys:
+        del sent_transactions[key]
 
-        try:
-            await message.forward(chat_id=TARGET_CHAT)
+    # Same transaction already forwarded
+    if identifier in sent_transactions:
+        print(f"⏩ Duplicate Mastercard transaction blocked: {identifier}")
+        return
 
-            sent_transactions[identifier] = current_time
+    try:
+        await message.forward(chat_id=TARGET_CHAT)
 
-            print("✅ Pehla approved message successfully forward kiya gaya!")
+        sent_transactions[identifier] = current_time
 
-        except Exception as e:
-            print(f"Error forwarding message: {e}")
+        print(
+            f"✅ APPROVED Mastercard forwarded | "
+            f"Source: {message.chat.title if message.chat else 'Unknown'}"
+        )
+
+    except Exception as e:
+        print(f"❌ Forwarding error: {e}")
 
 
 if __name__ == "__main__":
     print("==========================================")
-    print("🚀 SMART TRANSACTION DEDUPLICATOR READY 🚀")
+    print("🚀 AUTO GROUP MASTERCARD FILTER READY 🚀")
     print("==========================================")
     app.run()
