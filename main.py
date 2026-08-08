@@ -18,8 +18,41 @@ app = Client(
 
 TARGET_CHAT = -1001896213793
 
+MASTERCARD_WORDS = [
+    "mastercard",
+    "master card",
+    "master",
+    "mc"
+]
+
 sent_transactions = {}
 TIME_WINDOW = 900  # 15 minutes
+
+
+def is_mastercard(text: str) -> bool:
+    text_lower = text.lower()
+
+    # Agar text me Mastercard ya related words hain
+    if any(word in text_lower for word in MASTERCARD_WORDS):
+        return True
+
+    # Agar card numbers hain toh unki prefix range check karo (Mastercard ranges)
+    numbers = re.findall(r'\b\d{6,16}\b', text)
+    for number in numbers:
+        try:
+            prefix2 = int(number[:2])
+            prefix4 = int(number[:4])
+
+            if 51 <= prefix2 <= 55:
+                return True
+
+            if 2221 <= prefix4 <= 2720:
+                return True
+
+        except ValueError:
+            pass
+
+    return False
 
 
 def extract_unique_identifier(text: str) -> str:
@@ -39,21 +72,23 @@ def extract_unique_identifier(text: str) -> str:
 async def test_filters_command(client: Client, message: Message):
     test_text = message.text.replace(".test", "").strip()
     if not test_text:
-        await message.edit("❌ Kripya test text bhi dein.\nExample: `.test Approved 515828|12|28|123`")
+        await message.edit("❌ Kripya test text bhi dein.\nExample: `.test Approved Mastercard 515828|12|28|123`")
         return
     
     text_lower = test_text.lower()
     has_approved = "approved" in text_lower or "✅" in test_text
+    has_mc = is_mastercard(test_text)
     
     report = (
         f"🧪 **TEST REPORT:**\n"
         f"----------------------------------\n"
         f"📝 Text: `{test_text}`\n"
         f"• Approved Check: {'✅ PASS' if has_approved else '❌ FAIL'}\n"
+        f"• Mastercard Check: {'✅ PASS' if has_mc else '❌ FAIL'}\n"
     )
     
-    if has_approved:
-        report += "\n✨ **Result:** Approved mil gaya! Target chat par bhej raha hu..."
+    if has_approved and has_mc:
+        report += "\n✨ **Result:** Sabhi filters pass ho gaye! Target chat par bhej raha hu..."
         await message.edit(report)
         try:
             await client.send_message(TARGET_CHAT, f"[TEST MESSAGE]\n{test_text}")
@@ -61,11 +96,11 @@ async def test_filters_command(client: Client, message: Message):
         except Exception as e:
             print(f"❌ Test send error: {e}")
     else:
-        report += "\n❌ **Result:** Text me 'approved' ya '✅' nahi hai!"
+        report += "\n❌ **Result:** Filters fail ho gaye! (Approved ya Mastercard missing hai)"
         await message.edit(report)
 
 
-# Main Incoming Message Listener
+# Main Incoming Message Listener (Approved + Mastercard Filter)
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
     try:
@@ -82,11 +117,15 @@ async def forward_messages(client: Client, message: Message):
 
         text_lower = text.lower()
 
-        # Ab yeh "approved" ya green tick "✅" dono me se kisi ko bhi pakad lega
+        # 1. Approved ya Green Tick check
         if "approved" not in text_lower and "✅" not in text:
             return
 
-        print(f"📥 APPROVED MATCHED in [{chat_title}]! Text length: {len(text)}")
+        # 2. Only Mastercard check
+        if not is_mastercard(text):
+            return
+
+        print(f"📥 MASTERCARD APPROVED MATCHED in [{chat_title}]! Text length: {len(text)}")
 
         current_time = time.time()
         identifier = extract_unique_identifier(text)
@@ -106,7 +145,7 @@ async def forward_messages(client: Client, message: Message):
 
         await client.send_message(chat_id=TARGET_CHAT, text=text)
         sent_transactions[identifier] = current_time
-        print(f"✅ SUCCESS: Approved message text sent to target chat!")
+        print(f"✅ SUCCESS: Mastercard approved message sent to target chat!")
 
     except Exception as e:
         print(f"❌ Error in forward_messages: {e}")
@@ -116,7 +155,7 @@ async def forward_messages(client: Client, message: Message):
 async def main():
     await app.start()
     print("==========================================")
-    print("🚀 FINAL FIXED BOT STARTED SUCCESSFULLY 🚀")
+    print("🚀 MASTERCARD FILTER BOT STARTED 🚀")
     print("==========================================")
 
     print("🔄 Loading chats and channels into cache...")
