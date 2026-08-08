@@ -2,7 +2,7 @@ import os
 import re
 import time
 import traceback
-from pyrogram import Client, idle, filters
+from pyrogram import Client, filters, idle
 from pyrogram.types import Message
 
 API_ID = int(os.getenv("API_ID", "8391628"))
@@ -60,20 +60,25 @@ async def test_filters_command(client: Client, message: Message):
             print("✅ Test message successfully sent to target chat!")
         except Exception as e:
             print(f"❌ Test send error: {e}")
-            traceback.print_exc()
     else:
         report += "\n❌ **Result:** Text me 'approved' nahi hai!"
         await message.edit(report)
 
 
-# Main Incoming Message Listener
+# Main Incoming Message Listener (Universal Logger ke sath)
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
     try:
-        if message.chat and message.chat.id == TARGET_CHAT:
+        chat_title = message.chat.title if message.chat else "Private"
+        chat_id = message.chat.id if message.chat else message.from_user.id
+        
+        if chat_id == TARGET_CHAT:
             return
 
         text = message.text or message.caption or ""
+        
+        # 🔍 Yeh line batayegi ki kisi bhi group/channel se message aa raha hai ya nahi
+        print(f"🔍 Incoming from [{chat_title}]: {text[:30]}...")
 
         if not text:
             return
@@ -83,7 +88,7 @@ async def forward_messages(client: Client, message: Message):
         if "approved" not in text_lower:
             return
 
-        print(f"📥 Approved message received from [{message.chat.title if message.chat else 'Private'}]: {text[:40]}...")
+        print(f"📥 APPROVED MATCHED in [{chat_title}]! Text: {text[:40]}...")
 
         current_time = time.time()
         identifier = extract_unique_identifier(text)
@@ -101,7 +106,6 @@ async def forward_messages(client: Client, message: Message):
             print(f"⏩ Duplicate transaction blocked: {identifier}")
             return
 
-        # Copy karne ki koshish karein aur agar error aaye toh print karein
         await message.copy(chat_id=TARGET_CHAT)
         sent_transactions[identifier] = current_time
         print(f"✅ SUCCESS: Approved message copied & sent to target chat!")
@@ -114,16 +118,17 @@ async def forward_messages(client: Client, message: Message):
 async def main():
     await app.start()
     print("==========================================")
-    print("🚀 DEBUG BOT READY 🚀")
+    print("🚀 ULTIMATE LIVE BOT STARTED 🚀")
     print("==========================================")
 
     print("🔄 Loading chats and channels into cache...")
     async for dialog in app.get_dialogs():
         pass
-    print("✅ All chats cached successfully!")
+    print("✅ All chats cached successfully! Ready to listen live messages.")
 
     await idle()
     await app.stop()
+
 
 if __name__ == "__main__":
     app.run(main())
