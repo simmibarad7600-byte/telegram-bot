@@ -22,13 +22,18 @@ TIME_WINDOW = 900  # 15 minutes
 
 
 def extract_unique_identifier(text: str) -> str:
-    text_lower = text.lower()
-    numbers = "".join(re.findall(r'\d+', text_lower))
-
-    if len(numbers) > 4:
-        return numbers[-10:]
-
-    return re.sub(r'[^a-zA-Z0-9]', '', text_lower)
+    # Message me se exact card number (12 se 19 digits) dhoondho taaki har card ki unique ID bane
+    cards = re.findall(r'\b\d{12,19}\b', text)
+    if cards:
+        return cards[0]
+    
+    # Agar card number na mile toh saare numbers ka combination use karo
+    numbers = "".join(re.findall(r'\d+', text))
+    if len(numbers) >= 6:
+        return numbers
+        
+    # Agar numbers bhi na ho toh poore message ka hash use karo taaki 'approved' word ki wajah se block na ho
+    return str(hash(text))
 
 
 # 🧪 TESTING COMMAND
@@ -62,7 +67,7 @@ async def test_filters_command(client: Client, message: Message):
         await message.edit(report)
 
 
-# Main Incoming Message Listener (Ab sirf 'Approved' check hoga)
+# Main Incoming Message Listener
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
     if message.chat and message.chat.id == TARGET_CHAT:
@@ -75,7 +80,6 @@ async def forward_messages(client: Client, message: Message):
 
     text_lower = text.lower()
 
-    # Sirf 'Approved' check hoga, baaki sab allow hai
     if "approved" not in text_lower:
         return
 
@@ -84,10 +88,7 @@ async def forward_messages(client: Client, message: Message):
     current_time = time.time()
     identifier = extract_unique_identifier(text)
 
-    if not identifier or len(identifier) < 4:
-        return
-
-    # Duplicate check
+    # Purane entries saaf karein
     expired_keys = [
         key
         for key, timestamp in sent_transactions.items()
@@ -97,6 +98,7 @@ async def forward_messages(client: Client, message: Message):
     for key in expired_keys:
         del sent_transactions[key]
 
+    # Duplicate check (Ab yeh sirf same exact card/message ko hi rogega)
     if identifier in sent_transactions:
         print(f"⏩ Duplicate transaction blocked: {identifier}")
         return
@@ -112,7 +114,7 @@ async def forward_messages(client: Client, message: Message):
 async def main():
     await app.start()
     print("==========================================")
-    print("🚀 OPEN APPROVED BOT READY (NO STRICT FILTERS) 🚀")
+    print("🚀 FIXED AUTO-DETECT BOT READY 🚀")
     print("==========================================")
 
     print("🔄 Loading chats and channels into cache...")
