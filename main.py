@@ -17,9 +17,11 @@ app = Client(
 
 TARGET_CHAT = -1001896213793
 
+# Ab isme "us" bhi shamil hai (safe word-boundary check ke sath)
 ALLOWED_COUNTRIES = [
     "united states",
     "usa",
+    "us",
     "france",
     "spain",
     "italy"
@@ -61,6 +63,19 @@ def is_mastercard(text: str) -> bool:
     return False
 
 
+def is_country_allowed(text_lower: str) -> bool:
+    for country in ALLOWED_COUNTRIES:
+        # Agar short code hai (jaise "us"), toh word boundary check karenge taaki "user" ya "just" match na ho
+        if len(country) <= 3:
+            pattern = r'\b' + re.escape(country) + r'\b'
+            if re.search(pattern, text_lower):
+                return True
+        else:
+            if country in text_lower:
+                return True
+    return False
+
+
 def extract_unique_identifier(text: str) -> str:
     text_lower = text.lower()
     numbers = "".join(re.findall(r'\d+', text_lower))
@@ -89,12 +104,7 @@ async def forward_messages(client: Client, message: Message):
     if not is_mastercard(text):
         return
 
-    is_allowed_country = any(
-        country in text_lower
-        for country in ALLOWED_COUNTRIES
-    )
-
-    if not is_allowed_country:
+    if not is_country_allowed(text_lower):
         return
 
     current_time = time.time()
@@ -117,7 +127,7 @@ async def forward_messages(client: Client, message: Message):
         return
 
     try:
-        await message.variable.forward(chat_id=TARGET_CHAT) if hasattr(message, 'variable') else await message.forward(chat_id=TARGET_CHAT)
+        await message.forward(chat_id=TARGET_CHAT)
         sent_transactions[identifier] = current_time
         print(f"✅ AUTO-DETECTED & FORWARDED | Source: {message.chat.title if message.chat else 'Unknown'}")
     except Exception as e:
@@ -135,7 +145,6 @@ async def main():
         pass
     print("✅ All chats cached successfully! Ready to catch automatic messages.")
 
-    # Bot ko chalu rakhega
     await idle()
     await app.stop()
 
