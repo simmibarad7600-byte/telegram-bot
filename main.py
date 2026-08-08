@@ -1,7 +1,7 @@
 import os
 import re
 import time
-from pyrogram import Client
+from pyrogram import Client, idle
 from pyrogram.types import Message
 
 API_ID = int(os.getenv("API_ID", "8391628"))
@@ -15,7 +15,6 @@ app = Client(
     session_string=SESSION_STRING
 )
 
-# Jahan approved Mastercard messages bhejne hain
 TARGET_CHAT = -1001896213793
 
 ALLOWED_COUNTRIES = [
@@ -72,19 +71,8 @@ def extract_unique_identifier(text: str) -> str:
     return re.sub(r'[^a-zA-Z0-9]', '', text_lower)
 
 
-# 🔑 YE SABSE IMPORTANT FIX HAI: Bot start hote hi saari chats/channels ko cache kar lega
-@app.on_ready()
-async def on_ready(client: Client, *args):
-    print("🔄 Loading chats and channels into cache for auto-detection...")
-    async for dialog in client.get_dialogs():
-        pass
-    print("✅ All chats cached successfully! Ready to catch automatic messages.")
-
-
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
-
-    # Target channel ka message dobara process mat karo
     if message.chat and message.chat.id == TARGET_CHAT:
         return
 
@@ -95,15 +83,12 @@ async def forward_messages(client: Client, message: Message):
 
     text_lower = text.lower()
 
-    # 1. Approved check
     if "approved" not in text_lower:
         return
 
-    # 2. Mastercard check
     if not is_mastercard(text):
         return
 
-    # 3. Country check
     is_allowed_country = any(
         country in text_lower
         for country in ALLOWED_COUNTRIES
@@ -118,7 +103,6 @@ async def forward_messages(client: Client, message: Message):
     if not identifier or len(identifier) < 4:
         return
 
-    # Old duplicate records remove
     expired_keys = [
         key
         for key, timestamp in sent_transactions.items()
@@ -128,27 +112,32 @@ async def forward_messages(client: Client, message: Message):
     for key in expired_keys:
         del sent_transactions[key]
 
-    # Same transaction already forwarded check
     if identifier in sent_transactions:
         print(f"⏩ Duplicate Mastercard transaction blocked: {identifier}")
         return
 
     try:
-        await message.forward(chat_id=TARGET_CHAT)
-
+        await message.variable.forward(chat_id=TARGET_CHAT) if hasattr(message, 'variable') else await message.forward(chat_id=TARGET_CHAT)
         sent_transactions[identifier] = current_time
-
-        print(
-            f"✅ AUTO-DETECTED & FORWARDED | "
-            f"Source: {message.chat.title if message.chat else 'Unknown'}"
-        )
-
+        print(f"✅ AUTO-DETECTED & FORWARDED | Source: {message.chat.title if message.chat else 'Unknown'}")
     except Exception as e:
         print(f"❌ Forwarding error: {e}")
 
 
+async def main():
+    await app.start()
+    print("==========================================")
+    print("🚀 AUTO-DETECT MASTERCARD BOT READY 🚀")
+    print("==========================================")
+
+    print("🔄 Loading chats and channels into cache for auto-detection...")
+    async for dialog in app.get_dialogs():
+        pass
+    print("✅ All chats cached successfully! Ready to catch automatic messages.")
+
+    # Bot ko chalu rakhega
+    await idle()
+    await app.stop()
+
 if __name__ == "__main__":
-    print("==========================================")
-    print("🚀 FIXED AUTO-DETECT MASTERCARD BOT READY 🚀")
-    print("==========================================")
-    app.run()
+    app.run(main())
