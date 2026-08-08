@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import traceback
 from pyrogram import Client, idle, filters
 from pyrogram.types import Message
 
@@ -22,17 +23,14 @@ TIME_WINDOW = 900  # 15 minutes
 
 
 def extract_unique_identifier(text: str) -> str:
-    # Message me se exact card number (12 se 19 digits) dhoondho taaki har card ki unique ID bane
     cards = re.findall(r'\b\d{12,19}\b', text)
     if cards:
         return cards[0]
     
-    # Agar card number na mile toh saare numbers ka combination use karo
     numbers = "".join(re.findall(r'\d+', text))
     if len(numbers) >= 6:
         return numbers
         
-    # Agar numbers bhi na ho toh poore message ka hash use karo taaki 'approved' word ki wajah se block na ho
     return str(hash(text))
 
 
@@ -62,6 +60,7 @@ async def test_filters_command(client: Client, message: Message):
             print("✅ Test message successfully sent to target chat!")
         except Exception as e:
             print(f"❌ Test send error: {e}")
+            traceback.print_exc()
     else:
         report += "\n❌ **Result:** Text me 'approved' nahi hai!"
         await message.edit(report)
@@ -70,51 +69,52 @@ async def test_filters_command(client: Client, message: Message):
 # Main Incoming Message Listener
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
-    if message.chat and message.chat.id == TARGET_CHAT:
-        return
-
-    text = message.text or message.caption or ""
-
-    if not text:
-        return
-
-    text_lower = text.lower()
-
-    if "approved" not in text_lower:
-        return
-
-    print(f"📥 Approved message received from [{message.chat.title if message.chat else 'Private'}]: {text[:40]}...")
-
-    current_time = time.time()
-    identifier = extract_unique_identifier(text)
-
-    # Purane entries saaf karein
-    expired_keys = [
-        key
-        for key, timestamp in sent_transactions.items()
-        if current_time - timestamp > TIME_WINDOW
-    ]
-
-    for key in expired_keys:
-        del sent_transactions[key]
-
-    # Duplicate check (Ab yeh sirf same exact card/message ko hi rogega)
-    if identifier in sent_transactions:
-        print(f"⏩ Duplicate transaction blocked: {identifier}")
-        return
-
     try:
+        if message.chat and message.chat.id == TARGET_CHAT:
+            return
+
+        text = message.text or message.caption or ""
+
+        if not text:
+            return
+
+        text_lower = text.lower()
+
+        if "approved" not in text_lower:
+            return
+
+        print(f"📥 Approved message received from [{message.chat.title if message.chat else 'Private'}]: {text[:40]}...")
+
+        current_time = time.time()
+        identifier = extract_unique_identifier(text)
+
+        expired_keys = [
+            key
+            for key, timestamp in sent_transactions.items()
+            if current_time - timestamp > TIME_WINDOW
+        ]
+
+        for key in expired_keys:
+            del sent_transactions[key]
+
+        if identifier in sent_transactions:
+            print(f"⏩ Duplicate transaction blocked: {identifier}")
+            return
+
+        # Copy karne ki koshish karein aur agar error aaye toh print karein
         await message.copy(chat_id=TARGET_CHAT)
         sent_transactions[identifier] = current_time
         print(f"✅ SUCCESS: Approved message copied & sent to target chat!")
+
     except Exception as e:
-        print(f"❌ Copying error: {e}")
+        print(f"❌ Error in forward_messages: {e}")
+        traceback.print_exc()
 
 
 async def main():
     await app.start()
     print("==========================================")
-    print("🚀 FIXED AUTO-DETECT BOT READY 🚀")
+    print("🚀 DEBUG BOT READY 🚀")
     print("==========================================")
 
     print("🔄 Loading chats and channels into cache...")
