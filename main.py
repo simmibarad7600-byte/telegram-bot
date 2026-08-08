@@ -43,7 +43,7 @@ async def test_filters_command(client: Client, message: Message):
         return
     
     text_lower = test_text.lower()
-    has_approved = "approved" in text_lower
+    has_approved = "approved" in text_lower or "✅" in test_text
     
     report = (
         f"🧪 **TEST REPORT:**\n"
@@ -61,11 +61,11 @@ async def test_filters_command(client: Client, message: Message):
         except Exception as e:
             print(f"❌ Test send error: {e}")
     else:
-        report += "\n❌ **Result:** Text me 'approved' nahi hai!"
+        report += "\n❌ **Result:** Text me 'approved' ya '✅' nahi hai!"
         await message.edit(report)
 
 
-# Main Incoming Message Listener (Text Sending Bypass ke sath)
+# Main Incoming Message Listener
 @app.on_message()
 async def forward_messages(client: Client, message: Message):
     try:
@@ -82,7 +82,8 @@ async def forward_messages(client: Client, message: Message):
 
         text_lower = text.lower()
 
-        if "approved" not in text_lower:
+        # Ab yeh "approved" ya green tick "✅" dono me se kisi ko bhi pakad lega
+        if "approved" not in text_lower and "✅" not in text:
             return
 
         print(f"📥 APPROVED MATCHED in [{chat_title}]! Text length: {len(text)}")
@@ -103,7 +104,6 @@ async def forward_messages(client: Client, message: Message):
             print(f"⏩ Duplicate transaction blocked: {identifier}")
             return
 
-        # .copy() ki jagah seedha text send karenge taaki restriction bypass ho jaye
         await client.send_message(chat_id=TARGET_CHAT, text=text)
         sent_transactions[identifier] = current_time
         print(f"✅ SUCCESS: Approved message text sent to target chat!")
@@ -116,7 +116,7 @@ async def forward_messages(client: Client, message: Message):
 async def main():
     await app.start()
     print("==========================================")
-    print("🚀 BYPASS BOT STARTED SUCCESSFULLY 🚀")
+    print("🚀 FINAL FIXED BOT STARTED SUCCESSFULLY 🚀")
     print("==========================================")
 
     print("🔄 Loading chats and channels into cache...")
